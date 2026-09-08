@@ -1,0 +1,193 @@
+// Schema do NDev Chatbot.
+//
+// Duas regras que valem para o arquivo inteiro:
+//  1. Todo dado gerenciavel tem um dono (Guild via Discord, TwitchChannel via ownerId).
+//     Isso e o que torna o multi-tenant verificavel em toda query.
+//  2. Restricoes de unicidade vivem no banco, nao so na aplicacao. Checagem em codigo
+//     perde para corrida; indice unico nao perde.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Platform {
+  DISCORD
+  TWITCH
+}
+
+enum OAuthProvider {
+  DISCORD
+  TWITCH
+}
+
+/// Usuario do painel. Sempre criado a partir do OAuth do Discord.
+model User {
+  id          String   @id @default(cuid())
+  discordId   String   @unique
+  username    String
+  avatar      String?
+  twitchId    String?  @unique
+  twitchLogin String?
+
+  /// Dono da instancia (vem de OWNER_DISCORD_IDS). Unico que pode vincular a
+  /// conta do bot na Twitch, que define de qual conta saem todas as mensagens.
+  isOwner Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  lastLogin DateTime @default(now())
+
+  tokens         OAuthToken[]
+  twitchChannels TwitchChannel[]
+
+  @@map("users")
+}
+
+/// Servidor do Discord conhecido pelo bot.
+model Guild {
+  id      String  @id // snowflake do Discord
+  name    String
+  icon    String?
+  prefix  String  @default("!")
+  enabled Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  commands   Command[]
+  liveAlerts LiveAlert[]
+
+  @@map("guilds")
+}
+
+/// Canal da Twitch em que o bot entra no chat.
+model TwitchChannel {
+  id           String  @id @default(cuid())
+  login        String  @unique // sempre minusculo
+  displayName  String?
+  twitchUserId String?
+  prefix       String  @default("!")
+  enabled      Boolean @default(true)
+
+  // Quem provou posse do canal via OAuth da Twitch. Sem dono, ninguem gerencia.
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  commands   Command[]
+  liveAlerts LiveAlert[]
+
+  @@index([ownerId])
+  @@map("twitch_channels")
+}
+
+/// Comando customizado. Pertence a UM escopo: guild OU canal da Twitch.
+model Command {
+  id       String   @id @default(cuid())
+  name     String // sem prefixo, minusculo
+  response String
+  aliases  String[] @default([])
+  enabled  Boolean  @default(true)
+
+  cooldownSec Int     @default(5)
+  modOnly     Boolean @default(false)
+  uses        Int     @default(0)
+
+  guildId String?
+  guild   Guild?  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  twitchChannelId String?
+  twitchChannel   TwitchChannel? @relation(fields: [twitchChannelId], references: [id], onDelete: Cascade)
+
+  createdBy String? // nome de quem criou (painel ou chat), so para exibicao
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, name])
+  @@unique([twitchChannelId, name])
+  @@index([guildId])
+  @@index([twitchChannelId])
+  @@map("commands")
+}
+
+/// Ligacao "canal da Twitch ficou online -> anuncia neste canal do Discord".
+model LiveAlert {
+  id      String  @id @default(cuid())
+  enabled Boolean @default(true)
+  message String  @default("@here {channel} ficou online jogando {game}! {title} -> {url}")
+
+  twitchChannelId String
+  twitchChannel   TwitchChannel @relation(fields: [twitchChannelId], references: [id], onDelete: Cascade)
+
+  guildId String
+  guild   Guild  @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  discordChannelId String
+
+  // Estado do anuncio, persistido para sobreviver a restart do worker.
+  wasLive         Boolean   @default(false)
+  lastAnnouncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([twitchChannelId, guildId, discordChannelId])
+  @@index([twitchChannelId])
+  @@index([guildId])
+  @@map("live_alerts")
+}
+
+/// Token OAuth de terceiro pertencente a um usuario do painel.
+/// accessToken/refreshToken sao gravados CIFRADOS (AES-256-GCM).
+model OAuthToken {
+  id       String        @id @default(cuid())
+  userId   String
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider OAuthProvider
+
+  accessToken  String
+  refreshToken String?
+  expiresAt    DateTime?
+  scopes       String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, provider])
+  @@map("oauth_tokens")
+}
+
+/// Credencial da CONTA DO BOT na Twitch (nao e um usuario do painel).
+/// Linha unica, id fixo "twitch". Tambem cifrada.
+model BotCredential {
+  id           String    @id @default("twitch")
+  login        String?
+  twitchUserId String?
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime?
+  scopes       String[]  @default([])
+  updatedAt    DateTime  @updatedAt
+
+  @@map("bot_credentials")
+}
+
+/// Execucao de comando. Alimenta as estatisticas do painel.
+model CommandLog {
+  id       String   @id @default(cuid())
+  platform Platform
+  scopeId  String // Guild.id ou TwitchChannel.id
+  command  String
+  userName String
+  createdAt DateTime @default(now())
+
+  @@index([platform, scopeId, createdAt])
+  @@index([createdAt])
+  @@map("command_logs")
+}

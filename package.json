@@ -1,0 +1,31 @@
+{
+  "name": "ndev-chatbot",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Chatbot multiplataforma (Discord + Twitch) com painel web de gerenciamento",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@ndev/api\" --filter \"@ndev/bot\" --filter \"@ndev/web\" dev",
+    "dev:api": "pnpm --filter @ndev/api dev",
+    "dev:bot": "pnpm --filter @ndev/bot dev",
+    "dev:web": "pnpm --filter @ndev/web dev",
+    "build": "pnpm --filter @ndev/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @ndev/core test && pnpm --filter @ndev/api test",
+    "db:generate": "pnpm --filter @ndev/db generate",
+    "db:migrate": "pnpm --filter @ndev/db migrate",
+    "db:push": "pnpm --filter @ndev/db push",
+    "db:studio": "pnpm --filter @ndev/db studio",
+    "setup": "pnpm install && pnpm db:generate && pnpm db:migrate",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\""
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "packageManager": "pnpm@11.4.0",
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

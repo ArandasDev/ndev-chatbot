@@ -1,0 +1,12 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+
+# Pacotes autorizados a rodar script de instalacao.
+# O pnpm bloqueia por padrao: postinstall e um vetor classico de supply chain,
+# entao cada pacote que precisa dele entra aqui explicitamente.
+allowBuilds:
+  "@prisma/client": true
+  "@prisma/engines": true
+  esbuild: true
+  prisma: true
