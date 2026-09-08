@@ -1,0 +1,14 @@
+# Fim de linha LF em todo lugar, inclusive no Windows.
+#
+# Não é preferência de estilo: o Prisma valida o checksum do arquivo de cada
+# migration já aplicada. Se um clone no Windows trouxer migration.sql em CRLF,
+# o checksum muda e o `migrate deploy` recusa com "migration was modified after
+# it was applied" — num banco que está perfeitamente íntegro.
+* text=auto eol=lf
+
+# Binários não passam por conversão nenhuma.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
