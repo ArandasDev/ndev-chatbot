@@ -34,7 +34,7 @@ const schema = z.object({
 
   API_PORT: z.coerce.number().int().positive().default(3001),
   API_URL: z.string().url().default('http://localhost:3001'),
-  WEB_URL: z.string().url().default('http://localhost:5173'),
+  WEB_URL: z.string().url().default('http://localhost:3000'),
 
   DATABASE_URL: z.string().min(1, 'obrigatoria'),
   REDIS_URL: z.string().min(1, 'obrigatoria').default('redis://localhost:6379'),

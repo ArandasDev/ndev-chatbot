@@ -8,3 +8,10 @@ build/
 .pnpm-store/
 apps/web/dist/
 packages/db/prisma/*.db*
+
+# Build do Next. `next-env.d.ts` fica versionado de proposito: o `pnpm typecheck`
+# roda tsc direto, sem passar pelo next, e sem esse arquivo um clone novo nao
+# enxerga os tipos globais do Next.
+.next/
+out/
+.turbo/

@@ -41,12 +41,18 @@ decisões diferentes, e a segunda precisa de um "sim" explícito — por isso o 
 ## Arquitetura
 
 ```
-apps/web (React/Vite :5173)          apps/api (Fastify :3001)         apps/bot (worker)
-  painel, cookie httpOnly    ──────►   OAuth · REST · guards            discord.js + twurple
-                                              │                                │
+apps/web (Next.js :3000)             apps/api (Fastify :3001)         apps/bot (worker)
+  painel, shadcn/ui          ──────►   OAuth · REST · guards            discord.js + twurple
+  cookie httpOnly                             │                                │
                                               ├──── Postgres (estado) ─────────┤
                                               └──── Redis (sinal) ─────────────┘
 ```
+
+**O painel roda no cliente, por decisão.** O cookie de sessão é `httpOnly` e pertence ao host da
+API — o servidor do Next nunca o recebe. Renderizar no servidor entregaria só uma casca vazia, então
+o Next entra como router, bundler e camada de layout, e os dados vêm por React Query com
+`credentials: 'include'`. Server Components só valeriam a pena junto com um cookie de domínio
+compartilhado entre app e api, que é uma mudança de autenticação, não de framework.
 
 **Postgres é o estado; Redis é só o sinal.** Os dois processos leem e escrevem no mesmo banco. O Redis
 carrega apenas mensagens de controle (`guild.commands.updated`) e o heartbeat do bot. Perder uma
@@ -116,7 +122,7 @@ pnpm db:migrate
 pnpm dev
 ```
 
-Isso sobe os três processos em paralelo: API em `:3001`, painel em `:5173` e o worker do bot.
+Isso sobe os três processos em paralelo: API em `:3001`, painel em `:3000` e o worker do bot.
 
 ### 4. Vincular a conta do bot na Twitch (uma vez, só você)
 
@@ -151,7 +157,7 @@ pnpm db:studio      # navegador visual do banco
 Depois do setup, esse é o roteiro que prova que o sistema todo funciona:
 
 - [ ] `curl http://localhost:3001/health` responde `{"ok":true}`
-- [ ] Login com Discord em `http://localhost:5173` — o cookie `ndev_session` aparece no DevTools
+- [ ] Login com Discord em `http://localhost:3000` — o cookie `ndev_session` aparece no DevTools
       marcado como **HttpOnly**
 - [ ] Sair, entrar **com Twitch** → cai numa conta nova, com a página Twitch pronta
 - [ ] Em **Conta**, conectar o Discord → as duas conexões ficam verdes na mesma conta
@@ -220,9 +226,11 @@ O custo é até um ciclo de atraso no anúncio. Trocar depois é implementar a i
 **A transição offline→online vem do banco** (`LiveAlert.wasLive`), não da memória: reiniciar o worker
 não reanuncia uma live que já estava no ar.
 
-**Os pacotes exportam TypeScript direto**, sem etapa de build. Os apps rodam com `tsx` em dev e em
-produção, e o Vite resolve as fontes do workspace nativamente. Isso elimina orquestração de build
-entre pacotes — a troca é depender do `tsx` em runtime.
+**Os pacotes exportam TypeScript direto**, sem etapa de build. A API e o worker rodam com `tsx` em
+dev e em produção. Isso elimina orquestração de build entre pacotes — a troca é depender do `tsx` em
+runtime. O painel não importa nenhum `@ndev/*`: ele fala com a API por HTTP como qualquer cliente, e
+declara os tipos das respostas em `src/lib/types.ts`. Acoplar um bundle de browser a um pacote de
+servidor renderia um `transpilePackages` e um problema de build a cada mudança no backend.
 
 **Cooldown fica em memória, não no Redis.** É estado descartável e local ao processo que atende
 aquele chat. Um restart zerar cooldowns é aceitável; uma ida à rede por mensagem, não.

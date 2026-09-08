@@ -1,18 +1,24 @@
 /**
- * Previa da resposta de um comando.
+ * Prévia da resposta de um comando.
  *
- * Reimplementa o `render()` do @ndev/core de forma proposital: e uma
- * aproximacao visual rodando no browser, com valores de exemplo. A fonte da
- * verdade continua sendo o motor no servidor - por isso a previa mostra
- * "como vai ficar", nunca decide nada.
+ * Reimplementa o `render()` do @ndev/core de propósito: é uma aproximação
+ * visual rodando no browser, com valores de exemplo. A fonte da verdade
+ * continua sendo o motor no servidor — por isso a prévia mostra "como vai
+ * ficar", nunca decide nada.
  */
-export function previewResponse(template: string, options: { user?: string; channel?: string } = {}) {
+export function previewResponse(
+  template: string,
+  options: { user?: string; channel?: string } = {},
+) {
   const user = options.user ?? 'Você';
   const channel = options.channel ?? 'seu canal';
 
   return template
     .replace(/\{random:([^}]*)\}/gi, (_m, list: string) => {
-      const opts = list.split('|').map((o) => o.trim()).filter(Boolean);
+      const opts = list
+        .split('|')
+        .map((o) => o.trim())
+        .filter(Boolean);
       return opts[0] ?? '';
     })
     .replace(/\{arg(\d+)\}/gi, (_m, n: string) => `arg${n}`)

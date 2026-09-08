@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -19,8 +19,9 @@ interface ApiErrorBody {
 /**
  * Cliente HTTP do painel.
  *
- * `credentials: 'include'` e o que faz o cookie de sessao viajar - o token nunca
- * passa por JavaScript, entao nao ha header Authorization para montar aqui.
+ * `credentials: 'include'` é o que faz o cookie de sessão viajar até a API. O
+ * token nunca passa por JavaScript — é httpOnly —, então não há header
+ * Authorization para montar aqui.
  */
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_URL}${path}`, {
@@ -50,15 +51,20 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
+  get: <T,>(path: string) => request<T>(path),
+  post: <T,>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
-  patch: <T>(path: string, body: unknown) =>
+  patch: <T,>(path: string, body: unknown) =>
     request<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  delete: <T,>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
-/** Manda o navegador para um fluxo OAuth (navegacao top-level, nao fetch). */
+/**
+ * Manda o navegador para um fluxo OAuth.
+ *
+ * É uma navegação top-level de propósito, não um fetch: o retorno do provedor
+ * precisa poder setar cookie e redirecionar, o que XHR não faz.
+ */
 export function goToOAuth(path: string): void {
   window.location.href = `${API_URL}${path}`;
 }

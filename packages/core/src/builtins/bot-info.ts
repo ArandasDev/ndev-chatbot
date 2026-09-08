@@ -7,7 +7,7 @@ export const botInfoCommand: BuiltinCommand = {
   async run(ctx) {
     // Lido direto do process.env de proposito: o @ndev/core nao depende do
     // @ndev/config, para continuar importavel em teste sem env completo.
-    const panel = process.env.WEB_URL ?? 'http://localhost:5173';
+    const panel = process.env.WEB_URL ?? 'http://localhost:3000';
     await ctx.reply(`NDev Chatbot rodando no ${ctx.platform === 'DISCORD' ? 'Discord' : 'Twitch'}. Painel: ${panel}`);
   },
 };

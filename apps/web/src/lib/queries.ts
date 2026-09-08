@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from './api-client.js';
+
+import { api } from '@/lib/api-client';
 import type {
   Command,
   CommandInput,
@@ -13,7 +14,7 @@ import type {
   TextChannel,
   TwitchChannel,
   VariableDoc,
-} from './types.js';
+} from '@/lib/types';
 
 export function useMe() {
   return useQuery({
