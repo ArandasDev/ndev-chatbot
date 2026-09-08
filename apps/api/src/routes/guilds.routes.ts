@@ -24,6 +24,15 @@ export async function registerGuildRoutes(app: FastifyInstance, bus: Bus): Promi
   /** Servidores que o usuario administra, marcando onde o bot ja esta. */
   app.get('/api/guilds', { preHandler: requireUser }, async (request) => {
     const user = currentUser(request);
+
+    // Quem entrou pela Twitch e ainda nao vinculou o Discord simplesmente nao
+    // tem servidores - isso e uma lista vazia, nao um erro.
+    const account = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { discordId: true },
+    });
+    if (!account?.discordId) return [];
+
     const manageable = await getManageableGuilds(user.id);
 
     const known = await prisma.guild.findMany({

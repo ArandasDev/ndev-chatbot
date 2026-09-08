@@ -11,12 +11,30 @@ o sistema.
 
 ## O que já funciona
 
+- **Login por Discord ou Twitch**, com a outra conta vinculável depois — nos dois sentidos.
+- **Chatbot ativado com um clique**: o streamer nunca vincula conta de bot nenhuma.
 - **Comandos customizados** compartilhados entre as duas plataformas, com variáveis (`{user}`,
   `{count}`, `{random:a|b}`), cooldown, restrição a moderadores e apelidos.
 - **Criação pelo chat**: `!addcmd`, `!editcmd`, `!delcmd` — o mesmo service que a API usa.
-- **Painel web** com login pelo Discord, editor de comandos com prévia ao vivo, estatísticas e status.
+- **Painel web** com editor de comandos e prévia ao vivo, estatísticas e status.
 - **Edição em tempo real**: salvar no painel reflete no chat sem reiniciar o bot.
 - **Alerta de live**: quando o canal fica online na Twitch, o bot anuncia no Discord.
+
+### Como o chatbot entra no chat de alguém
+
+A conta que fala no chat é **uma só, da instância** — você configura uma vez, como administrador.
+Do lado do streamer são dois passos, e nenhum deles envolve criar ou vincular um bot:
+
+```
+  entra no painel (Discord ou Twitch)
+        │
+        ├── conecta a Twitch  ──►  provamos que o canal é dele
+        │
+        └── clica "Ativar chatbot"  ──►  o bot entra no chat
+```
+
+Conectar a Twitch **não** ativa nada. Provar que o canal é seu e mandar um bot entrar nele são
+decisões diferentes, e a segunda precisa de um "sim" explícito — por isso o canal nasce desativado.
 
 ---
 
@@ -69,8 +87,9 @@ Isso não dá para automatizar, e sem isso o bot não conecta.
 3. Copie *Client ID* e gere um *Client Secret*
 4. Crie **uma conta separada na Twitch para ser o bot** — não use a sua principal
 
-**Seu ID do Discord**: ative o Modo Desenvolvedor (Configurações → Avançado), clique com o botão
-direito no seu nome → *Copiar ID*. Ele vai em `OWNER_DISCORD_IDS`.
+**Quem é o dono da instância**: preencha `OWNER_DISCORD_IDS` (Modo Desenvolvedor no Discord →
+botão direito no seu nome → *Copiar ID*) e/ou `OWNER_TWITCH_LOGINS` (seu login da Twitch). Só o dono
+vê a opção de vincular a conta do bot; os demais usuários apenas ativam o chatbot no canal deles.
 
 ### 3. Configurar e subir
 
@@ -79,7 +98,7 @@ cp .env.example .env
 ```
 
 Preencha no `.env`: `DISCORD_TOKEN`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
-`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` e `OWNER_DISCORD_IDS`.
+`TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET` e `OWNER_DISCORD_IDS` / `OWNER_TWITCH_LOGINS`.
 
 `JWT_SECRET` e `ENCRYPTION_KEY` já vêm gerados. Para gerar novos:
 
@@ -99,11 +118,13 @@ pnpm dev
 
 Isso sobe os três processos em paralelo: API em `:3001`, painel em `:5173` e o worker do bot.
 
-### 4. Vincular a conta do bot na Twitch
+### 4. Vincular a conta do bot na Twitch (uma vez, só você)
 
 O worker vai avisar no log que a conta não está vinculada. Entre no painel, vá em **Status** e clique
-em *Vincular conta do bot* — **logado na conta do BOT na Twitch**, não na sua. Só quem está em
-`OWNER_DISCORD_IDS` vê esse botão.
+em *Vincular conta do bot* — **logado na conta do BOT na Twitch**, não na sua.
+
+Isso é configuração de infraestrutura, feita uma única vez. Depois disso, qualquer streamer conecta
+a Twitch e aperta *Ativar chatbot* — sem passar por aqui, e sem precisar de conta de bot própria.
 
 ---
 
@@ -132,13 +153,19 @@ Depois do setup, esse é o roteiro que prova que o sistema todo funciona:
 - [ ] `curl http://localhost:3001/health` responde `{"ok":true}`
 - [ ] Login com Discord em `http://localhost:5173` — o cookie `ndev_session` aparece no DevTools
       marcado como **HttpOnly**
+- [ ] Sair, entrar **com Twitch** → cai numa conta nova, com a página Twitch pronta
+- [ ] Em **Conta**, conectar o Discord → as duas conexões ficam verdes na mesma conta
+- [ ] Entrar de novo pelo Discord → volta para a **mesma** conta, com a Twitch ainda conectada
+- [ ] Tentar conectar uma Twitch já usada por outra conta → recusa com mensagem, sem mesclar nada
 - [ ] Adicionar o bot num servidor pelo painel → ele aparece em **Servidores**
 - [ ] `!ping` no Discord responde com a latência
 - [ ] Criar `!social` pelo painel → funciona no chat **sem reiniciar o bot** _(prova o bus)_
 - [ ] `!addcmd teste olá {user}` no chat → o comando aparece na tabela do painel
       _(prova o service compartilhado)_
 - [ ] Repetir o comando na hora → o bot fica em silêncio _(cooldown)_
-- [ ] Vincular a Twitch → o bot entra no chat e `!ping` responde lá também
+- [ ] Conectar a Twitch → o canal aparece **inativo** e o bot **não** está no chat
+- [ ] Clicar em *Ativar chatbot* → o bot entra no chat e `!ping` responde lá também
+- [ ] Clicar em *Desativar chatbot* → o bot sai do chat
 - [ ] Configurar um alerta, ficar online na Twitch → anúncio no Discord em ≤ 60s, **uma vez só**
 - [ ] `GET /api/guilds/<id-de-servidor-alheio>` devolve **403**, não 200 nem 404 com dados
 - [ ] Derrubar o worker → o painel continua abrindo e **Status** mostra "offline"
@@ -159,6 +186,13 @@ As decisões que mudaram o desenho do sistema, e o porquê:
 - **Autorização derivada do Discord**, não do nosso banco: quem pode editar um servidor é decidido
   consultando as guilds do usuário na API do Discord (cache de 60s). Guardar isso localmente
   significaria continuar autorizando quem já perdeu o cargo.
+- **Vincular conta já usada é recusado, nunca mesclado.** Mesclar dois usuários com servidores e
+  canais configurados é irreversível — um erro de clique não pode custar isso.
+- **A intenção do OAuth (entrar / vincular / conta do bot) viaja no cookie de state**, não na URL:
+  quem monta o link não escolhe o que vai acontecer na volta. O fluxo da conta do bot ainda
+  reconfere a sessão de dono no callback, porque ida e volta são requests diferentes.
+- **Canal nasce desativado.** O bot só entra no chat de alguém depois de um clique explícito do dono
+  do canal — provar posse não é o mesmo que consentir.
 - **Filtro por dono em toda query do Prisma**, mesmo depois do guard — defesa em profundidade contra
   IDOR. Um id de comando sozinho nunca é suficiente para ler ou escrever.
 - **Comando customizado não executa código.** A interpolação é substituição textual sobre uma
@@ -192,6 +226,15 @@ entre pacotes — a troca é depender do `tsx` em runtime.
 
 **Cooldown fica em memória, não no Redis.** É estado descartável e local ao processo que atende
 aquele chat. Um restart zerar cooldowns é aceitável; uma ida à rede por mensagem, não.
+
+**Uma conta de bot para a instância inteira**, e não uma por streamer. É o modelo do StreamElements:
+o streamer não deveria precisar criar uma conta na Twitch só para ter um bot. O custo é que todas as
+mensagens saem do mesmo login — e que essa conta é um ponto único de falha, protegido por
+`OWNER_DISCORD_IDS`/`OWNER_TWITCH_LOGINS`.
+
+**Usuário sem Discord vinculado recebe 403, nunca 401.** Quem entrou pela Twitch tem sessão válida,
+só não tem servidores — um 401 ali jogaria a pessoa num loop de login. `/api/guilds` responde lista
+vazia e o painel mostra o passo que falta.
 
 ---
 

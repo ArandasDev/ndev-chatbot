@@ -55,16 +55,29 @@ export async function fetchTwitchUser(accessToken: string): Promise<TwitchUser> 
   return user;
 }
 
-export function twitchAuthorizeUrl(state: string, scopes: string[]): string {
+export interface AuthorizeOptions {
+  /**
+   * Forca a tela de consentimento. Ligado ao vincular a conta do BOT, para nao
+   * reaproveitar em silencio a sessao pessoal aberta no navegador. Desligado no
+   * login normal, onde reconsentir a cada entrada seria so atrito.
+   */
+  forceVerify?: boolean;
+}
+
+export function twitchAuthorizeUrl(
+  state: string,
+  scopes: string[],
+  options: AuthorizeOptions = {},
+): string {
   const params = new URLSearchParams({
     client_id: env.TWITCH_CLIENT_ID ?? '',
     redirect_uri: `${env.API_URL}/auth/twitch/callback`,
     response_type: 'code',
     scope: scopes.join(' '),
     state,
-    // Garante a tela de consentimento: sem isso, trocar a conta do bot no mesmo
-    // navegador reaproveita a sessao anterior silenciosamente.
-    force_verify: 'true',
   });
+
+  if (options.forceVerify) params.set('force_verify', 'true');
+
   return `https://id.twitch.tv/oauth2/authorize?${params.toString()}`;
 }

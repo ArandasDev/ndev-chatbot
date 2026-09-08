@@ -54,7 +54,7 @@ export function LiveAlertsPage() {
       {!twitchChannel ? (
         <div className="card">
           <Empty
-            title="Vincule seu canal da Twitch primeiro"
+            title="Conecte sua conta da Twitch primeiro"
             description="O alerta precisa saber qual canal monitorar."
           />
         </div>

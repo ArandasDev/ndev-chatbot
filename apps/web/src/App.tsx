@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
 import { ProtectedLayout } from './components/Layout.js';
+import { AccountPage } from './pages/Account.js';
 import { GuildDetailPage } from './pages/GuildDetail.js';
 import { LiveAlertsPage } from './pages/LiveAlerts.js';
 import { LoginPage } from './pages/Login.js';
@@ -34,6 +35,7 @@ export function App() {
             <Route path="/twitch" element={<TwitchPage />} />
             <Route path="/alertas" element={<LiveAlertsPage />} />
             <Route path="/status" element={<StatusPage />} />
+            <Route path="/conta" element={<AccountPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/servidores" replace />} />

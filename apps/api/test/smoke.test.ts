@@ -104,6 +104,20 @@ describe('API - montagem e autorização', () => {
     assert.equal(response.statusCode, 401);
   });
 
+  // Discord e Twitch sao as DUAS portas de entrada: exigir sessao nelas
+  // trancaria a porta pelo lado de dentro.
+  for (const url of ['/auth/discord', '/auth/twitch']) {
+    it(`${url} é público (porta de login)`, async () => {
+      const response = await app.inject({ method: 'GET', url });
+
+      assert.notEqual(
+        response.statusCode,
+        401,
+        `${url} não pode exigir sessão — é por onde o usuário entra`,
+      );
+    });
+  }
+
   it('vincular a conta do bot exige sessão de dono', async () => {
     const response = await app.inject({ method: 'GET', url: '/auth/twitch/bot' });
     assert.equal(response.statusCode, 401);
