@@ -4,47 +4,48 @@ import { CommandsPanel } from '../components/CommandsPanel.js';
 import { StatsPanel } from '../components/StatsPanel.js';
 import { Empty, ErrorBox, Loading, PageHead } from '../components/ui.js';
 import { goToOAuth } from '../lib/api-client.js';
-import { useTwitchChannels, useUpdateTwitchChannel } from '../lib/queries.js';
+import { useMe, useTwitchChannels, useUpdateTwitchChannel } from '../lib/queries.js';
 
 export function TwitchPage() {
+  const me = useMe();
   const channels = useTwitchChannels();
 
-  if (channels.isPending) return <Loading />;
+  if (me.isPending || channels.isPending) return <Loading />;
   if (channels.isError) return <ErrorBox error={channels.error} />;
 
   const channel = channels.data?.[0];
 
-  return (
-    <>
-      <PageHead
-        title="Twitch"
-        description="Vincule seu canal para o bot entrar no chat e responder aos mesmos comandos."
-      />
-
-      {!channel ? (
+  if (!me.data?.connections.twitch.linked || !channel) {
+    return (
+      <>
+        <PageHead
+          title="Twitch"
+          description="Conecte seu canal para o chatbot responder no seu chat."
+        />
         <div className="card">
           <Empty
-            title="Nenhum canal vinculado"
-            description="Você autoriza com sua própria conta da Twitch — é assim que provamos que o canal é seu."
+            title="Conecte sua conta da Twitch"
+            description="Você autoriza com a sua própria conta — é assim que provamos que o canal é seu. Nenhuma conta de bot é necessária."
             action={
               <button
                 type="button"
                 className="btn btn-twitch"
                 onClick={() => goToOAuth('/auth/twitch')}
               >
-                Vincular canal da Twitch
+                Conectar Twitch
               </button>
             }
           />
         </div>
-      ) : (
-        <ChannelPanel channelId={channel.id} />
-      )}
-    </>
-  );
+      </>
+    );
+  }
+
+  return <ChannelPanel channelId={channel.id} />;
 }
 
 function ChannelPanel({ channelId }: { channelId: string }) {
+  const me = useMe();
   const channels = useTwitchChannels();
   const update = useUpdateTwitchChannel(channelId);
   const [tab, setTab] = useState<'comandos' | 'stats'>('comandos');
@@ -52,35 +53,54 @@ function ChannelPanel({ channelId }: { channelId: string }) {
   const channel = channels.data?.find((item) => item.id === channelId);
   if (!channel) return null;
 
+  const chatbotConfigured = me.data?.chatbotConfigured ?? false;
+  const active = channel.enabled;
+
   return (
     <>
+      <PageHead
+        title={channel.displayName ?? channel.login}
+        description={`twitch.tv/${channel.login}`}
+      />
+
+      {/*
+        O botao de ativar e o centro da pagina de proposito. Do lado do
+        streamer, ativar o chatbot é UM clique: a conta que fala no chat é da
+        instância, não dele.
+      */}
       <div className="card">
         <div className="row-between">
           <div>
-            <h2>{channel.displayName ?? channel.login}</h2>
-            <p className="faint">
-              twitch.tv/{channel.login} · prefixo <code>{channel.prefix}</code>
+            <h2>Chatbot no seu chat</h2>
+            <p className="faint" style={{ marginTop: 2 }}>
+              {active
+                ? 'O bot está no seu chat e respondendo aos comandos.'
+                : 'O bot ainda não entrou no seu chat.'}
             </p>
           </div>
 
           <div className="row">
-            {channel.enabled ? (
-              <span className="badge badge-on">
-                <span className="dot" /> no chat
-              </span>
-            ) : (
-              <span className="badge badge-off">pausado</span>
-            )}
+            <span className={active ? 'badge badge-on' : 'badge badge-off'}>
+              <span className="dot" /> {active ? 'ativo' : 'inativo'}
+            </span>
             <button
               type="button"
-              className="btn btn-sm"
-              disabled={update.isPending}
-              onClick={() => update.mutate({ enabled: !channel.enabled })}
+              className={active ? 'btn' : 'btn btn-primary'}
+              disabled={update.isPending || (!active && !chatbotConfigured)}
+              onClick={() => update.mutate({ enabled: !active })}
             >
-              {channel.enabled ? 'Tirar do chat' : 'Colocar no chat'}
+              {update.isPending ? 'Aguarde…' : active ? 'Desativar chatbot' : 'Ativar chatbot'}
             </button>
           </div>
         </div>
+
+        {!chatbotConfigured ? (
+          <div className="alert alert-info" style={{ marginTop: 14, marginBottom: 0 }}>
+            O administrador desta instância ainda não configurou a conta que fala no chat. Ativar
+            agora não teria efeito.
+          </div>
+        ) : null}
+
         {update.isError ? (
           <div style={{ marginTop: 12 }}>
             <ErrorBox error={update.error} />

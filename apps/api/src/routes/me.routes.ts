@@ -5,6 +5,13 @@ import { currentUser, requireUser } from '../auth/session.js';
 import { botInviteUrl } from '../lib/discord-api.js';
 
 export async function registerMeRoutes(app: FastifyInstance): Promise<void> {
+  /**
+   * Identidade e estado das conexoes.
+   *
+   * O painel monta a interface inteira a partir daqui: quais provedores estao
+   * vinculados decide o que aparece. Como o cookie e httpOnly, esta rota e o
+   * unico jeito de o front saber quem esta logado.
+   */
   app.get('/api/me', { preHandler: requireUser }, async (request) => {
     const session = currentUser(request);
 
@@ -12,23 +19,29 @@ export async function registerMeRoutes(app: FastifyInstance): Promise<void> {
       where: { id: session.id },
       select: {
         id: true,
+        displayName: true,
+        avatarUrl: true,
         discordId: true,
-        username: true,
-        avatar: true,
         twitchLogin: true,
         isOwner: true,
       },
     });
 
-    const botLinked = (await prisma.botCredential.count({ where: { id: 'twitch' } })) > 0;
+    // A conta do bot e da instancia, nao do usuario. Quando ela nao existe,
+    // ativar o chatbot num canal nao teria efeito - e o painel avisa antes.
+    const chatbotConfigured = (await prisma.botCredential.count({ where: { id: 'twitch' } })) > 0;
 
     return {
-      ...user,
-      avatarUrl: user.avatar
-        ? `https://cdn.discordapp.com/avatars/${user.discordId}/${user.avatar}.png?size=128`
-        : null,
+      id: user.id,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      isOwner: user.isOwner,
+      connections: {
+        discord: { linked: user.discordId !== null },
+        twitch: { linked: user.twitchLogin !== null, login: user.twitchLogin },
+      },
       botInviteUrl: botInviteUrl(),
-      twitchBotLinked: botLinked,
+      chatbotConfigured,
     };
   });
 }

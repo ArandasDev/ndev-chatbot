@@ -10,11 +10,11 @@ CREATE TYPE "OAuthProvider" AS ENUM ('DISCORD', 'TWITCH');
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
-    "discordId" TEXT NOT NULL,
-    "username" TEXT NOT NULL,
-    "avatar" TEXT,
+    "discordId" TEXT,
     "twitchId" TEXT,
     "twitchLogin" TEXT,
+    "displayName" TEXT NOT NULL,
+    "avatarUrl" TEXT,
     "isOwner" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "lastLogin" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,7 +42,7 @@ CREATE TABLE "twitch_channels" (
     "displayName" TEXT,
     "twitchUserId" TEXT,
     "prefix" TEXT NOT NULL DEFAULT '!',
-    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "enabled" BOOLEAN NOT NULL DEFAULT false,
     "ownerId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,

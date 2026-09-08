@@ -8,6 +8,7 @@ const LINKS = [
   { to: '/twitch', label: 'Twitch', icon: '📺' },
   { to: '/alertas', label: 'Alertas de live', icon: '🔔' },
   { to: '/status', label: 'Status', icon: '📡' },
+  { to: '/conta', label: 'Conta', icon: '🔗' },
 ];
 
 /**
@@ -52,7 +53,7 @@ export function ProtectedLayout() {
             <div className="avatar" />
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="user-name">{me.data.username}</div>
+            <div className="user-name">{me.data.displayName}</div>
             <button
               type="button"
               className="faint"

@@ -1,10 +1,37 @@
 import { Link } from 'react-router-dom';
 
 import { Empty, ErrorBox, Loading, PageHead } from '../components/ui.js';
-import { useGuilds } from '../lib/queries.js';
+import { goToOAuth } from '../lib/api-client.js';
+import { useGuilds, useMe } from '../lib/queries.js';
 
 export function ServersPage() {
+  const me = useMe();
   const guilds = useGuilds();
+
+  // Quem entrou pela Twitch cai aqui sem Discord vinculado. Isso nao e erro,
+  // e um passo que falta - e a tela precisa dizer qual.
+  if (me.data && !me.data.connections.discord.linked) {
+    return (
+      <>
+        <PageHead title="Servidores" description="Gerencie os servidores do Discord por aqui." />
+        <div className="card">
+          <Empty
+            title="Conecte seu Discord"
+            description="Para gerenciar servidores e comandos do Discord, o painel precisa saber quais servidores você administra."
+            action={
+              <button
+                type="button"
+                className="btn btn-discord"
+                onClick={() => goToOAuth('/auth/discord')}
+              >
+                Conectar Discord
+              </button>
+            }
+          />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

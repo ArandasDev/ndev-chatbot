@@ -25,17 +25,26 @@ enum OAuthProvider {
   TWITCH
 }
 
-/// Usuario do painel. Sempre criado a partir do OAuth do Discord.
+/// Usuario do painel, com identidade multi-provedor.
+///
+/// O login pode comecar por Discord OU Twitch, e a outra conta e vinculada
+/// depois. Por isso os dois ids sao opcionais - mas nunca os dois ao mesmo
+/// tempo: nao existe caminho no codigo que crie um usuario sem provedor.
 model User {
-  id          String   @id @default(cuid())
-  discordId   String   @unique
-  username    String
-  avatar      String?
-  twitchId    String?  @unique
+  id String @id @default(cuid())
+
+  discordId String? @unique
+
+  twitchId    String? @unique
   twitchLogin String?
 
-  /// Dono da instancia (vem de OWNER_DISCORD_IDS). Unico que pode vincular a
-  /// conta do bot na Twitch, que define de qual conta saem todas as mensagens.
+  /// Identidade exibida, vinda do provedor usado por ultimo.
+  displayName String
+  avatarUrl   String?
+
+  /// Dono da instancia (OWNER_DISCORD_IDS / OWNER_TWITCH_LOGINS). Unico que
+  /// pode vincular a conta do bot na Twitch, que define de qual conta saem
+  /// todas as mensagens do chat.
   isOwner Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -71,9 +80,12 @@ model TwitchChannel {
   displayName  String?
   twitchUserId String?
   prefix       String  @default("!")
-  enabled      Boolean @default(true)
 
-  // Quem provou posse do canal via OAuth da Twitch. Sem dono, ninguem gerencia.
+  /// Chatbot ativado pelo dono do canal. Vincular a conta NAO ativa: entrar no
+  /// chat de alguem e uma acao que precisa de um "sim" explicito.
+  enabled Boolean @default(false)
+
+  /// Dono do canal: quem provou posse pelo OAuth da Twitch. Sem dono, ninguem gerencia.
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 

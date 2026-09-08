@@ -9,9 +9,14 @@ export const SESSION_COOKIE = 'ndev_session';
 const MAX_AGE_SEC = 7 * 24 * 60 * 60;
 const key = new TextEncoder().encode(env.JWT_SECRET);
 
+/**
+ * O que viaja no token: o minimo para identificar e autorizar.
+ *
+ * Nada de nome, avatar ou provedor - isso muda e vive no banco. Token pequeno
+ * tambem significa menos coisa para invalidar quando algo muda.
+ */
 export interface SessionUser {
   id: string;
-  discordId: string;
   isOwner: boolean;
 }
 
@@ -35,7 +40,7 @@ function cookieOptions() {
 }
 
 export async function issueSession(reply: FastifyReply, user: SessionUser): Promise<void> {
-  const token = await new SignJWT({ discordId: user.discordId, isOwner: user.isOwner })
+  const token = await new SignJWT({ isOwner: user.isOwner })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(user.id)
     .setIssuedAt()
@@ -57,11 +62,7 @@ export async function readSession(request: FastifyRequest): Promise<SessionUser 
     const { payload } = await jwtVerify(token, key);
     if (!payload.sub) return null;
 
-    return {
-      id: payload.sub,
-      discordId: String(payload.discordId ?? ''),
-      isOwner: payload.isOwner === true,
-    };
+    return { id: payload.sub, isOwner: payload.isOwner === true };
   } catch (err) {
     // Assinatura invalida ou expirada: tratado como visitante, sem vazar o motivo.
     log.debug('sessão rejeitada:', (err as Error).message);
@@ -76,7 +77,7 @@ export async function requireUser(request: FastifyRequest): Promise<void> {
   request.currentUser = user;
 }
 
-/** preHandler: exige que o usuario seja dono da instalacao (OWNER_DISCORD_IDS). */
+/** preHandler: exige que o usuario seja dono da instalacao. */
 export async function requireOwner(request: FastifyRequest): Promise<void> {
   await requireUser(request);
   if (!request.currentUser?.isOwner) {

@@ -2,6 +2,10 @@ import { createLogger, decryptSecret, encryptSecret, env } from '@ndev/config';
 import { forbidden, unauthorized } from '@ndev/core';
 import { prisma } from '@ndev/db';
 
+/** Falta o vinculo com o Discord - situacao normal para quem entrou pela Twitch. */
+const discordNotLinked = (message = 'Vincule sua conta do Discord para gerenciar servidores.') =>
+  forbidden(message);
+
 const log = createLogger('discord-api');
 const BASE = 'https://discord.com/api/v10';
 
@@ -79,7 +83,7 @@ async function refreshDiscordToken(refreshToken: string): Promise<DiscordTokenSe
     }),
   });
 
-  if (!response.ok) throw unauthorized('Faça login com o Discord novamente.');
+  if (!response.ok) throw discordNotLinked('Sua conexão com o Discord expirou. Reconecte.');
   return (await response.json()) as DiscordTokenSet;
 }
 
@@ -95,12 +99,15 @@ async function getValidAccessToken(userId: string): Promise<string> {
   const stored = await prisma.oAuthToken.findUnique({
     where: { userId_provider: { userId, provider: 'DISCORD' } },
   });
-  if (!stored) throw unauthorized('Conta do Discord não vinculada.');
+
+  // Deliberadamente NAO e 401: quem entrou pela Twitch tem sessao valida, so
+  // nao tem Discord vinculado. Um 401 aqui deslogaria o usuario num loop.
+  if (!stored) throw discordNotLinked();
 
   const expired = stored.expiresAt !== null && stored.expiresAt.getTime() < Date.now() + 60_000;
   if (!expired) return decryptSecret(stored.accessToken);
 
-  if (!stored.refreshToken) throw unauthorized('Faça login com o Discord novamente.');
+  if (!stored.refreshToken) throw discordNotLinked('Reconecte sua conta do Discord.');
 
   const refreshed = await refreshDiscordToken(decryptSecret(stored.refreshToken));
   await prisma.oAuthToken.update({

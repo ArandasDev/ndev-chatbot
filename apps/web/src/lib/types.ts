@@ -7,13 +7,16 @@
  */
 export interface Me {
   id: string;
-  discordId: string;
-  username: string;
+  displayName: string;
   avatarUrl: string | null;
-  twitchLogin: string | null;
   isOwner: boolean;
+  connections: {
+    discord: { linked: boolean };
+    twitch: { linked: boolean; login: string | null };
+  };
   botInviteUrl: string;
-  twitchBotLinked: boolean;
+  /** A instância tem uma conta de bot vinculada (config do administrador). */
+  chatbotConfigured: boolean;
 }
 
 export interface GuildSummary {

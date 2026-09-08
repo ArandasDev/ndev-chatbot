@@ -51,8 +51,9 @@ const schema = z.object({
 
   LIVE_POLL_INTERVAL_SEC: z.coerce.number().int().min(30).default(60),
 
-  /** IDs do Discord autorizados a vincular a conta do bot na Twitch. */
+  /** Donos da instancia: podem vincular a conta do bot na Twitch. */
   OWNER_DISCORD_IDS: z.string().default(''),
+  OWNER_TWITCH_LOGINS: z.string().default(''),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -68,6 +69,13 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 
+function splitList(value: string): string[] {
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export const env = {
   ...raw,
   isProd: raw.NODE_ENV === 'production',
@@ -79,9 +87,8 @@ export const env = {
   hasDiscordOAuth: Boolean(raw.DISCORD_CLIENT_ID && raw.DISCORD_CLIENT_SECRET),
   hasTwitch: Boolean(raw.TWITCH_CLIENT_ID && raw.TWITCH_CLIENT_SECRET),
 
-  ownerDiscordIds: raw.OWNER_DISCORD_IDS.split(',')
-    .map((id) => id.trim())
-    .filter(Boolean),
+  ownerDiscordIds: splitList(raw.OWNER_DISCORD_IDS),
+  ownerTwitchLogins: splitList(raw.OWNER_TWITCH_LOGINS).map((login) => login.toLowerCase()),
 } as const;
 
 export type Env = typeof env;

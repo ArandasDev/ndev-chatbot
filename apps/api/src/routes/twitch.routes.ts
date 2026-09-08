@@ -1,5 +1,5 @@
 import type { Bus } from '@ndev/bus';
-import { commandStats } from '@ndev/core';
+import { badRequest, commandStats } from '@ndev/core';
 import { prisma } from '@ndev/db';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -42,6 +42,17 @@ export async function registerTwitchRoutes(app: FastifyInstance, bus: Bus): Prom
     async (request) => {
       const scope = twitchScope(request);
       const data = updateChannelSchema.parse(request.body);
+
+      // Ativar sem conta do bot vinculada deixaria o painel dizendo "ativo"
+      // enquanto nada acontece no chat. Melhor recusar com o motivo.
+      if (data.enabled === true) {
+        const configured = await prisma.botCredential.count({ where: { id: 'twitch' } });
+        if (configured === 0) {
+          throw badRequest(
+            'O chatbot ainda não foi configurado pelo administrador desta instância.',
+          );
+        }
+      }
 
       const channel = await prisma.twitchChannel.update({
         where: { id: scope.id },

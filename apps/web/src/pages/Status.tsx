@@ -77,11 +77,13 @@ export function StatusPage() {
             <div>
               <h2>Conta do bot na Twitch</h2>
               <p>
-                Define de qual conta saem as mensagens no chat. Faça login na conta do BOT, não na sua.
+                Configuração da instância: define de qual conta saem as mensagens em todos os canais.
+                Faça login na conta do BOT, não na sua. Os streamers não passam por aqui — eles só
+                apertam “Ativar chatbot”.
               </p>
             </div>
-            <span className={me.data.twitchBotLinked ? 'badge badge-on' : 'badge badge-warn'}>
-              {me.data.twitchBotLinked ? 'vinculada' : 'não vinculada'}
+            <span className={me.data.chatbotConfigured ? 'badge badge-on' : 'badge badge-warn'}>
+              {me.data.chatbotConfigured ? 'vinculada' : 'não vinculada'}
             </span>
           </div>
 
@@ -90,7 +92,7 @@ export function StatusPage() {
             className="btn btn-twitch"
             onClick={() => goToOAuth('/auth/twitch/bot')}
           >
-            {me.data.twitchBotLinked ? 'Revincular conta do bot' : 'Vincular conta do bot'}
+            {me.data.chatbotConfigured ? 'Revincular conta do bot' : 'Vincular conta do bot'}
           </button>
         </div>
       ) : null}
